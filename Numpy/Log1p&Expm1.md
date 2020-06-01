@@ -1,0 +1,1 @@
+https://numpy.org/doc/1.18/reference/generated/numpy.log1p.html
