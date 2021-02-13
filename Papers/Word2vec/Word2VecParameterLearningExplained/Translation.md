@@ -56,7 +56,7 @@ Note that $v_w$ and $v^{'}_w$ are two representations of the word $w$.  $v_w$ co
 > $$
 > h = W^Tx = W^T_{(k,\cdot)} :=v_{w_I}^{T}, \qquad (1)
 > $$
-> 这实质上是将 $W$ 的第 $k$ 行复制到 $h$ 。$v_{w_i}$是输入词 $w_i$ 的向量表征。这意味着隐藏层单元的链接(激活)函数简单地是线性的(即，将其输入的加权和直接传递到下一层)。
+> 这实质上是将 $W$ 的第 $k$ 行复制到 $h$ 。$v_{w_i}$是输入词 $w_i$ 的向量表征。这意味着隐藏层单元的链接(激活)函数是简单地线性关系(即，将其输入的加权和直接传递到下一层)。
 >
 > 从隐藏层到输出层，有一个不同的权重矩阵$W^{‘}={w^{’}_{ij}}$，它是一个$N×V$矩阵。使用这些权重，我们可以为词典的每个单词计算分数$u_j$，
 > $$
@@ -97,6 +97,25 @@ $$
 $$
 where $t_j = \mathop{1}(j = j^∗)$, i.e., $t_j$ will only be 1 when the j-th unit is the actual output word, otherwise $t_j = 0$. Note that this derivative is simply the prediction error $e_j$ of the output layer.
 
+Next we take the derivative on $w_{ij}^{'}$ to obtain the gradient on the hidden→output weights.
+$$
+\frac{\partial E}{\partial w_{ij}^{'}} = \frac{\partial E}{\partial u_j} \cdot\frac{\partial u_j}{\partial w_{ij}^{'}} = e_j \cdot h_i \qquad (9)
+$$
+Therefore, using stochastic gradient descent, we obtain the weight updating equation for hidden → output weights:
+$$
+{w_{ij}^{'}}^{(new)} = {w_{ij}^{'}}^{(old)} - \eta \cdot e_j \cdot h_i. 
+\qquad (10)
+$$
+or
+$$
+{v_{w_j}^{'}}^{(new)} = {v_{w_j}^{'}}^{(old)} - \eta \cdot e_j \cdot \mathbb{h} \qquad for \ j=1,2,\cdots,V. \qquad (11)
+$$
+where $\eta > 0$ is the learning rate, $e_j = y_j − t_j$ , and $h_i$ is the $i$-th unit in the hidden layer; $v^{'}_{w_j}$ is the output vector of $w_j$ . Note that this update equation implies that we have to go through every possible word in the vocabulary,  check its output probability $y_j$ , and compare $y_j$ with its expected output $t_j$ (either $0$ or $1$). 
+
+- If  $y_j > t_j$  (“overestimating”), then we subtract a proportion of the hidden vector $h$ (i.e., $v_{w_I}$ ) from $v^{'}_{w_j}$ , thus making $\mathbb{v}^{'}_{w_j}$ farther away from $v_{w_I}$ .
+- If $y_j < t_j$ (“underestimating”, which is true only if $t_j = 1$, i.e., $w_j = w_O$), we add some $h$ to $v^{'}_{w_O}$ , thus making $v^{'}_{w_O}$ closer3(Here when I say “closer” or “farther”, I meant using the inner product instead of Euclidean as the distance measurement.) to $v_{w_I}$.
+- If $y_j$ is very close to $t_j$ , then according to the update equation, very little change will be made to the weights. Note, again, that $v_w$ (input vector) and $v^{'}_{w}$ (output vector) are two different vector representations of the word $w$.
+
 > 现在让我们推导出该模型的权重更新方程。虽然实际的计算是不切实际的(下面解释)，但我们进行推导是为了深入了解这个没有应用任何技巧的原始模型。有关反向传播的基础知识的回顾，请参见附录A。
 >
 > 训练目标(对于一个训练样本)是最大化(4)，给定输入上下文单词 $w_I$ 的权值，观察实际输出单词 $w_O$ (表示其在输出层的索引为 $j^{∗}$ )的条件概率。
@@ -118,9 +137,343 @@ where $t_j = \mathop{1}(j = j^∗)$, i.e., $t_j$ will only be 1 when the j-th un
 > \frac{\partial E}{\partial u_j} = y_j − t_j := e_j
 > \qquad (8)
 > $$
-> 其中 $t_j=\mathop{1}(j=j^∗)$ ，即当第 j 个单位为实际输出词时，$t_j$ 将仅为 1，否则$t_j=0$。请注意，该导数只是输出层的预测误差$e_j$。
+> 其中 $t_j=\mathop{1} (j=j^∗)$ ，即当第 $j$ 个单位为实际输出词时，$t_j$ 将仅为 $1$，否则$t_j=0$。请注意，该导数只是输出层的预测误差 $e_j$ 。
+>
+> 接下来，我们对 $w_{ij}^{'}$ 求导，以获得 hidden → output 权重的梯度。
+> $$
+> \frac{\partial E}{\partial w_{ij}^{'}} = \frac{\partial E}{\partial u_j} \cdot\frac{\partial u_j}{\partial w_{ij}^{'}} = e_j \cdot h_i \qquad (9)
+> $$
+> 因此，利用随机梯度下降，我们得到了 hidden →output 权重的权重更新方程：
+> $$
+> {w_{ij}^{'}}^{(new)} = {w_{ij}^{'}}^{(old)} - \eta \cdot e_j \cdot h_i. 
+> \qquad (10)
+> $$
+> 或者
+> $$
+> {v_{w_j}^{'}}^{(new)} = {v_{w_j}^{'}}^{(old)} - \eta \cdot e_j \cdot \mathbb{h} \qquad for \ j=1,2,\cdots,V. \qquad (11)
+> $$
+> 其中 $\eta>0$ 是学习率，$e_j=y_j−t_j$，$h_i$ 是隐藏层中的 $i$ 个单位；$v^{'}_{w_j}$ 是 $w_j$ 的输出层向量。注意，这个更新公式意味着我们必须遍历词汇表中的每个可能的单词，检查其输出概率 $y_j$ ，并将 $y_j$ 与其预期输出 $t_j$ ( $0$ 或 $1$ )进行比较。
+>
+> - 如果 $y_j > t_j$ (“overestimating”)，则从 $v^{'}_{w_j}$ 中减去一定比例的隐藏层向量 $h$ (即 $v_{w_i}$ )，从而使 $\mathbb{v}^{’}_{w_j}$ 远离 $v_{w_i}$ ；
+> - 如果 $y_j<t_j$ (“underestimating”，只有当 $t_j=1$，即 $w_j=w_O$ 时才是正确的)，我们将一定比例的 $h$ 加到 $v^{'}_{w_O}$ 上，从而使 $v^{’}_{w_O}$ 接近 $v_{w_i}$ 。
+> - 如果 $y_j$ 与 $t_j$ 非常接近，则根据更新公式，权重几乎不会发生变化。再次注意，$v_w$ (输入向量)和 $v^{'}_{w}$ (输出向量)是单词 $w$ 的两个不同的向量表示。
+>
+> 这里，当我说“更近”或“更远”时，我的意思是用内积而不是欧几里得作为距离的度量。
 
-----------------------
+## Update equation for input→hidden weights
+
+Having obtained the update equations for $W^{'}$ , we can now move on to $W$. We take the derivative of $E$ on the output of the hidden layer, obtaining
+$$
+\frac{\partial{E}}{\partial{h_i}} = \sum^{V}_{j=1} \frac{\partial E}{\partial u_j} \cdot \frac{\partial u_j}{\partial h_i}= \sum_{j=1}^{V}e_j \cdot w_{ij}^{'} :=EH_i
+\qquad(12)
+$$
+where $h_i$ is the output of the $i$-th unit of the hidden layer; $u_j$ is defined in (2), the net input of the $j$-th unit in the output layer; and $e_j = y_j − t_j$ is the prediction error of the $j$-th word in the output layer. $EH$, an $N$-dim vector, is the sum of the output vectors of all words in the vocabulary, weighted by their prediction error.
+
+Next we should take the derivative of $E$ on $W$. First, recall that the hidden layer performs a linear computation on the values from the input layer. Expanding the vector notation in (1) we get
+$$
+h_i = \sum_{k=1}^{V} x_k \cdot w_{ki} \qquad (13)
+$$
+Now we can take the derivative of $E$ with regard to each element of $W$, obtaining
+$$
+\frac{\partial E}{\partial w_{ki}} = \frac{\partial E}{\partial h_i} \cdot \frac{\partial h_i}{\partial w_{ki}} = EH_i \cdot x_k
+\qquad (14)
+$$
+This is equivalent to the tensor product of $x$ and $EH$, i.e.,
+$$
+\frac{\partial E}{\partial W} = x \bigotimes EH = xEH^{T} 
+\qquad(15)
+$$
+from which we obtain a $V × N$ matrix. Since only one component of $x$ is non-zero, only one row of $\frac{\partial E}{\partial W}$ is non-zero, and the value of that row is $EH^T$ , an $N$-dim vector. We obtain the update equation of $W$ as
+$$
+v_{w_I}^{(new)} = v_{w_I}^{(old)} - \eta EH^T \qquad (16)
+$$
+where $v_{w_I}$ is a row of $W$, the “input vector” of the only context word, and is the only row of $W$ whose derivative is non-zero. All the other rows of $W$ will remain unchanged after this iteration, because their derivatives are zero.
+
+Intuitively, since vector $EH$ is the sum of output vectors of all words in vocabulary weighted by their prediction error $e_j = y_j −t_j$ , we can understand (16) as adding a portion of every output vector in vocabulary to the input vector of the context word. If, in the output layer, the probability of a word $w_j$ being the output word is overestimated ($y_j > t_j$), then the input vector of the context word $w_I$ will tend to move farther away from the output vector of $w_j$ ; conversely if the probability of $w_j$ being the output word is underestimated ($y_j < t_j$), then the input vector $w_I$ will tend to move closer to the output vector of $w_j$ ; if the probability of $w_j$ is fairly accurately predicted, then it will have little effect on the movement of the input vector of $w_I$ . The movement of the input vector of $w_I$ is determined by the prediction error of all vectors in the vocabulary; the larger the prediction error, the more significant effects a word will exert on the movement on the input vector of the context word.
+
+As we iteratively update the model parameters by going through context-target word pairs generated from a training corpus, the effects on the vectors will accumulate. We can imagine that the output vector of a word $w$ is “dragged” back-and-forth by the input vectors of $w$’s co-occurring neighbors, as if there are physical strings between the vector of $w$ and the vectors of its neighbors. Similarly, an input vector can also be considered as being dragged by many output vectors. This interpretation can remind us of gravity, or force-directed graph layout. The equilibrium length of each imaginary string is related to the strength of cooccurrence between the associated pair of words, as well as the learning rate. After many iterations, the relative positions of the input and output vectors will eventually stabilize.
+
+> 获得 $W^{'}$ 的更新方程后，我们现在开始转到 $W$。我们对隐藏层的输出取 $E$ 的导数，得到
+> $$
+> \frac{\partial{E}}{\partial{h_i}} = \sum^{V}_{j=1} \frac{\partial E}{\partial u_j} \cdot \frac{\partial u_j}{\partial h_i}= \sum_{j=1}^{V}e_j \cdot w_{ij}^{'} :=EH_i
+> \qquad(12)
+> $$
+> 其中 $h_i$ 是隐藏层的 $i$ 个单元的输出；$u_j$ 在 (2) 中定义，是输出层中 $j$ 个单元的输入；$e_j=y_j−t_j$ 是输出层中 $j$ 个词的预测误差。$EH$ 是一个 $N$ 维向量，是词典中所有词的输出向量按它们的预测误差加权之和。
+>
+> 接下来，我们应该取 $E$ 在 $W$ 上的导数。首先，回想一下，隐藏层对输入层中的值执行线性计算。展开(1)中的向量，我们得到
+> $$
+> h_i = \sum_{k=1}^{V} x_k \cdot w_{ki} \qquad (13)
+> $$
+> 现在我们可以对 $W$ 的每个元素取 $E$ 的导数，得到
+> $$
+> \frac{\partial E}{\partial w_{ki}} = \frac{\partial E}{\partial h_i} \cdot \frac{\partial h_i}{\partial w_{ki}} = EH_i \cdot x_k
+> \qquad (14)
+> $$
+> 这相当于 $x$ 和 $EH$ 的张量积，即,
+> $$
+> \frac{\partial E}{\partial W} = x \bigotimes EH = xEH^{T} 
+> \qquad(15)
+> $$
+> 由此我们得到一个 $V×N$ 矩阵。由于 $x$ 只有一个分量是非零的，所以只有 $\frac{\partial E}{\partial W}$ 的一行非零，该行的值是 $EH^T$ ，即 $N$ - dim向量。我们得到了 $W$ 的更新方程
+> $$
+> v_{w_I}^{(new)} = v_{w_I}^{(old)} - \eta EH^T \qquad (16)
+> $$
+> 其中 $v_{w_i}$ 是 $W$ 的行，即唯一 context 词的“输入向量”，并且是导数不为零的 $W$ 的唯一行。在此迭代之后， $W$ 的所有其他行将保持不变，因为它们的导数为零。
+>
+> 直观地，由于向量 $EH$ 是词汇表中所有词的输出向量经其预测误差$e_j = y_j−t_j$ 加权后的总和，我们可以理解为 (16) 将词典中每个输出向量的一部分加到上下文单词的输入向量上。如果在输出层中，一个词 $w_j$ 作为输出词的概率被 overestimating $(y_j > t_j)$，那么上下文单词 $w_I$ 的输入向量将倾向于远离 $w_j$ 的输出向量; 反之，如果 underestimating 了 $w_j$ 作为输出词的概率 $(y_j < t_j)$ ，则输入向量 $w_I$ 将趋向于接近 $w_j$ 的输出向量;如果对 $w_j$ 的概率预测得比较准确，则对 $w_I$ 的输入向量的移动影响不大。**$w_I$ 的输入向量的移动由词汇表中所有向量的预测误差决定; 预测误差越大，词对上下文词输入向量的运动影响就越大。**
+>
+> 由于在训练过程中，我们是通过迭代训练语料生成的 context - target一对词来更新模型参数，每次迭代更新对向量的影响也是累积的。我们可以想象成词 $w$ 的输出向量被 $w$ 的共现邻居的输入向量的来回往复的拖拽。就好比有真实的弦在词 $w$ 和其邻居词之间。同样的，输入向量也可以被想象成被很多输出向量拖拽。这种解释可以提醒我们想象成一个重力，或者其他力导向的图的布局。每个假想的弦的平衡长度与相关单词对之间同现的强度以及学习率有关。经过多次迭代，输入和输出向量的相对位置最终将稳定下来。
+
+![Figure2](/Users/helloword/Anmingyu/Gor-rok/Papers/Word2vec/Word2VecParameterLearningExplained/Fig2.png)
+
+**Figure 2: Continuous bag-of-word model**
+
+#### 1.2 Multi-word context
+
+Figure 2 shows the CBOW model with a multi-word context setting. When computing the hidden layer output, instead of directly copying the input vector of the input context word, the CBOW model takes the average of the vectors of the input context words, and use the product of the input→hidden weight matrix and the average vector as the output.
+$$
+\begin{align*}
+\mathbb{h} 
+&= \frac{1}{C}\textbf{W}^T(\textbf{x}_1 + \textbf{x}_2 + \cdots + \textbf{x}_C)
+\qquad(17)
+\\
+&= \frac{1}{C}(\textbf{v}_{w_1} + \textbf{v}_{w_2} + \cdots + \textbf{v}_{w_C})^T
+\qquad(18)
+\end{align*}
+$$
+where $C$ is the number of words in the context, $w_1, \cdots , w_C$ are the words the in the context, and $v_w$ is the input vector of a word $w$. 
+
+The loss function is
+$$
+\begin{align*}
+E 
+&= -log \ p(w_O |w_{I,1},\cdots,w_{I,C})
+\qquad (19)
+\\
+&= -u_{j^*} \ + \ log \ \sum_{j^{'} = 1}^{V}exp(u_{j^{'}})
+\qquad (20)
+\\
+&= {\textbf{-v}_{w_O}^{'}}^T \cdot \textbf{h} \ + \ log \ \sum_{j^{'} = 1}^{V}exp({\textbf{v}_{w_j}^{'}}^T \cdot \textbf{h})
+\qquad (21)
+\\
+\end{align*}
+$$
+which is the same as (7), the objective of the one-word-context model, except that $\textbf{h}$ is different, as defined in (18) instead of (1).
+
+The update equation for the hidden→output weights stay the same as that for the one-word-context model (11). We copy it here:
+$$
+{\textbf{v}_{w_j}^{'}}^{(new)} = {\textbf{v}_{w_j}^{'}}^{(old)} - \eta \cdot e_j \cdot \textbf{h} \qquad for \ j=1,2,\cdots,V. 
+\qquad (22)
+$$
+Note that we need to apply this to every element of the hidden→output weight matrix for each training instance.
+
+The update equation for input→hidden weights is similar to (16), except that now we need to apply the following equation for every word $w_{I,c}$ in the context:
+$$
+\textbf{v}_{w_{I,c}}^{(new)} = \textbf{v}_{w_{I,c}}^{(old)} - \frac{1}{C} \cdot \eta \cdot EH^T 
+\qquad 
+for \ c = 1,2,\cdots,C. 
+\qquad (23)
+$$
+where $v_{w_{I,c}}$ is the input vector of the $c$-th word in the input context; $\eta$ is a positive learning rate; and $EH = \frac{\partial E}{\partial h_i}$ is given by (12). The intuitive understanding of this update equation is the same as that for (16).
+
+> Figure2 显示了具有 multi-word context 设置的 CBOW 模型。在计算隐藏层输出时，CBOW模型不是直接复制输入上下文词的输入向量，而是取输入上下文词向量的平均值，并用 input →hidden 的权值矩阵与平均向量的乘积作为输出。
+> $$
+> \begin{align*}
+> \mathbb{h} 
+> &= \frac{1}{C}W^T(x_1 + x_2 + \cdots + x_C)
+> \qquad(17)
+> \\
+> &= \frac{1}{C}(v_{w_1} + v_{w_2} + \cdots + v_{w_C})^T
+> \qquad(18)
+> \end{align*}
+> $$
+> 其中$C$是上下文中的单词数，$w_1，\cdots，w_C$ 是上下文中的单词， $v_w$ 是单词 $w$ 的输入向量。损失函数为
+> $$
+> \begin{align*}
+> E 
+> &= -log \ p(w_O |w_{I,1},\cdots,w_{I,C})
+> \qquad (19)
+> \\
+> &= -u_{j^*} \ + \ log \ \sum_{j^{'} = 1}^{V}exp(u_{j^{'}})
+> \qquad (20)
+> \\
+> &= {\textbf{-v}_{w_O}^{'}}^T \cdot \textbf{h} \ + \ log \ \sum_{j^{'} = 1}^{V}exp({\textbf{v}_{w_j}^{'}}^T \cdot \textbf{h})
+> \qquad (21)
+> \\
+> \end{align*}
+> $$
+> 它与 one-word-context 的目标函数(7)相同，只是 $\textbf{h}$ 不同，$\textbf{h}$ 如(18)中定义的，而不是(1)中定义的。
+>
+> hidden → output 的权重的更新公式与 one-word-context 模型 (11) 相同。我们将其复制到此处：
+> $$
+> {\textbf{v}_{w_j}^{'}}^{(new)} = {\textbf{v}_{w_j}^{'}}^{(old)} - \eta \cdot e_j \cdot \textbf{h} \qquad for \ j=1,2,\cdots,V. 
+> \qquad (22)
+> $$
+> 请注意，我们需要将其应用于每个训练实例的 hidden→output 权重矩阵的每个元素。
+>
+> input → hidden 权重的更新公式类似于(16)，不同之处在于现在我们需要对上下文中的每个单词 $w_{I，c}$ 应用以下公式
+> $$
+> \textbf{v}_{w_{I,c}}^{(new)} = \textbf{v}_{w_{I,c}}^{(old)} - \frac{1}{C} \cdot \eta \cdot EH^T 
+> \qquad 
+> for \ c = 1,2,\cdots,C. 
+> \qquad (23)
+> $$
+> 其中 $v_{w_{I,c}}$ 是输入上下文中 的第 $c$ 个单词输入向量; $\eta$ 为正学习率; $EH = \frac{\partial E}{\partial h_i}$ 由(12)给出。这个更新方程的直观理解与(16)相同。
+
+## 2 Skip-Gram Model
+
+![Figure3](/Users/helloword/Anmingyu/Gor-rok/Papers/Word2vec/Word2VecParameterLearningExplained/Fig3.png)
+
+**Figure 3: The skip-gram model.**
+
+The skip-gram model is introduced in Mikolov et al. (2013a,b). Figure 3 shows the skipgram model. It is the opposite of the CBOW model. The target word is now at the input layer, and the context words are on the output layer.
+
+We still use $\textbf{v}_{w_I}$ to denote the input vector of the only word on the input layer, and thus we have the same definition of the hidden-layer outputs $\textbf{h}$ as in (1), which means $\textbf{h}$ is simply copying (and transposing) a row of the input→hidden weight matrix, $\textbf{W}$, associated with the input word $w_I$ . We copy the definition of $\textbf{h}$ below:
+$$
+\textbf{h} = \textbf{W}^T_{(k,\cdot)}:= \textbf{v}_{w_I}^{T}, 
+\qquad (24)
+$$
+On the output layer, instead of outputing one multinomial distribution, we are outputing $C$ multinomial distributions. Each output is computed using the same hidden→output matrix:
+$$
+p(w_{c,j}=w_{O,c}|w_I) = y_{c,j} = \frac{exp(u_{c,j})}{\sum_{j^{'}=1}^{V}exp(u_{j^{'}})}
+\qquad (25) 
+$$
+where $w_{c,j}$ is the $j$-th word on the $c$-th panel of the output layer; $w_{O,c}$ is the actual $c$-th word in the output context words; $w_I$ is the only input word; $y_{c,j}$ is the output of the $j$-th unit on the $c$-th panel of the output layer; $u_{c,j}$ is the net input of the $j$-th unit on the $c$-th panel of the output layer. Because the output layer panels share the same weights, thus
+$$
+u_{c,j}=u_j={\textbf{v}_{w_j}^{'}}^T \cdot \textbf{h}, \quad for \ c=1,2,\cdots,C
+\qquad(26)
+$$
+where $\textbf{v}^{'}_{w_j}$ is the output vector of the $j$-th word in the vocabulary, $w_j$ , and also $\textbf{v}^{'}_{w_j}$ is taken from a column of the hidden→output weight matrix,  $W^{'}$.
+
+The derivation of parameter update equations is not so different from the one-word-context model. The loss function is changed to
+$$
+\begin{align*}
+E
+&= -log \ p(w_{O,1},w_{O,2}, \cdots , w_{O,C} | w_I)
+\qquad (27)
+\\
+&= -log \prod_{c=1}^{C} \frac{exp(u_{c,j_{c}^{*}})}{\sum_{j^{'}}^{V}exp(u_{j^{'}})}
+\qquad (28)
+\\
+&= -\sum_{c=1}^{C}u_{j_c^*} + C \cdot log \sum_{j^{'} = 1}^{V}exp(u_{j^{'}})
+\qquad (29)
+\end{align*}
+$$
+where $j^∗_c$ is the index of the actual $c$-th output context word in the vocabulary.
+
+We take the derivative of $E$ with regard to the net input of every unit on every panel of the output layer, $u_{c,j}$ and obtain
+$$
+\frac{\partial E}{\partial u_{c,j}} = y_{c,j} - t_{c,j} :=e_{c,j} 
+\qquad (30)
+$$
+which is the prediction error on the unit, the same as in (8). For notation simplicity, we define a $V$ -dimensional vector $EI = {EI_1, \cdots ,EI_V }$ as the sum of prediction errors over all context words:
+$$
+EI_j = \sum_{c=1}^{C}e_{c,j} \qquad(31)
+$$
+Next, we take the derivative of $E$ with regard to the hidden→output matrix $W^{'}$ , and obtain
+$$
+\frac{\partial E}{\partial w_{ij}^{'}} = \sum_{c=1}^{C} \frac{\partial E}{\partial u_{c,j}} \cdot \frac{\partial u_{c,j}}{\partial w_{ij}^{'}} = EI_j \cdot h_i 
+\qquad(32)
+$$
+Thus we obtain the update equation for the hidden→output matrix $\textbf{W}^{'}$，
+$$
+{w_{ij}^{'}}^{(new)} = {w_{ij}^{'}}^{(old)} - \eta \cdot EI_j \cdot h_i \qquad (33)
+$$
+or
+$$
+{v_{w_j}^{'}}^{(new)} = {v_{w_j}^{'}}^{(old)} -  \eta \cdot EI_j \cdot \textbf{h} \qquad for \ j =1,2, \cdots , V. \qquad(34) 
+$$
+
+The intuitive understanding of this update equation is the same as that for (11), except that the prediction error is summed across all context words in the output layer. Note that we need to apply this update equation for every element of the hidden→output matrix for each training instance.
+
+The derivation of the update equation for the input→hidden matrix is identical to (12) to (16), except taking into account that the prediction error $e_j$ is replaced with $EI_j$ . We directly give the update equation:
+$$
+v_{w_I}^{(new)} = v_{w_I}^{(old)} - \eta \cdot EH^T \qquad (35)
+$$
+where $EH$ is an $N$-dim vector, each component of which is defined as
+$$
+EH_i = \sum_{j=1}^{V}EI_j \cdot w_{ij}^{'} \qquad (36)
+$$
+
+
+
+> Mikolov等人提出了 skip-gram 模型。(2013a,b)。Figure 3 显示了 Skip-gram模型。这与 CBOW 模型相反。目标词现在位于输入层，上下文词位于输出层。
+>
+> 我们仍然使用 $\textbf{v}_{w_i}$ 来表示输入层上唯一单词的输入向量，因此我们具有与(1)中相同的隐藏层输出 $\textbf{h}$ 的定义，这意味着 $\textbf{h}$ 只是复制(并转置)与输入单词 $w_i$ 相关联的 input→hidden 权重矩阵 $\textbf{W}$ 的行。我们将 $\textbf{h}$ 的定义复制到下面：
+> $$
+> \textbf{h} = \textbf{W}^T_{(k,\cdot)}:= \textbf{v}_{w_I}^{T}, 
+> \qquad (24)
+> $$
+> 在输出层，我们不是输出一个多项分布，而是输出 $C$个 多项分布。每个输出都使用相同的 hidden→output 矩阵来计算:
+> $$
+> p(w_{c,j}=w_{O,c}|w_I) = y_{c,j} = \frac{exp(u_{c,j})}{\sum_{j^{'}=1}^{V}exp(u_{j^{'}})}
+> \qquad (25)
+> $$
+> 其中，$w_{c,j}$ 是输出层的第 $c$ 个 panel 的第 $j$ 个单词；$w_{O,c}$ 是输出上下文词中实际的第 $c$ 个单词；$w_I$ 是唯一的输入词；$y_{c,j}$ 是输出层的第 $c$ 个 panel上的第 $j$ 个单元的输出；$u_{c,j}$ 是输出层中第 $c$ 个 panel 的第 $j$ 个单元的输入。
+>
+> (注：原文用的是 panel , 我觉得这里意思应该是在正负样本的角度会有 $C$ 组，即 context 的长度为 C , 其中 $j$ 对应的是相对于正负样本集合中的第 $j$ 个词)
+>
+> 由于输出层的 panels 共享相同的权重矩阵，因此
+> $$
+> u_{c,j}=u_j={\textbf{v}_{w_j}^{'}}^T \cdot \textbf{h}, \quad for \ c=1,2,\cdots,C
+> \qquad(26)
+> $$
+> 其中 $\textbf{v}^{’}_{w_j}$ 是词典中第 $j$ 个词的输出向量 $w_j$ ，并且 $\textbf{v}^{’}_{w_j}$ 取自 hidden → output 权重矩阵 $W^{'}$ 的列。
+>
+> 参数更新方程的推导与 one-word-context 模型没有太大不同。损失函数更改为
+> $$
+> \begin{align*}
+> E
+> &= -log \ p(w_{O,1},w_{O,2}, \cdots , w_{O,C} | w_I)
+> \qquad (27)
+> \\
+> &= -log \prod_{c=1}^{C} \frac{exp(u_{c,j_{c}^{*}})}{\sum_{j^{'}}^{V}exp(u_{j^{'}})}
+> \qquad (28)
+> \\
+> &= -\sum_{c=1}^{C}u_{j_c^*} + C \cdot log \sum_{j^{'} = 1}^{V}exp(u_{j^{'}})
+> \qquad (29)
+> \end{align*}
+> $$
+> 其中 $j^∗_c$ 是词典中实际的 $c$ 个输出上下文词的索引。
+>
+> 我们求 $E$ 对 $u_{c,j}$ 的偏导,得到：
+> $$
+> \frac{\partial E}{\partial u_{c,j}} = y_{c,j} - t_{c,j} :=e_{c,j} 
+> \qquad (30)
+> $$
+> 跟公式(8)一致，这是单元上的预测误差。为简单起见，我们将 $V$ 维向量 $EI={EI_1，\cdots，EI_V}$ 定义为所有上下文词的预测误差之和：
+> $$
+> EI_j = \sum_{c=1}^{C}e_{c,j} \qquad(31)
+> $$
+> 接下来，我们求 $E$ 对 hidden -> output 的权重矩阵 $W^{'}$ 的偏导，可得：
+> $$
+> \frac{\partial E}{\partial w_{ij}^{'}} = \sum_{c=1}^{C} \frac{\partial E}{\partial u_{c,j}} \cdot \frac{\partial u_{c,j}}{\partial w_{ij}^{'}} = EI_j \cdot h_i 
+> \qquad(32)
+> $$
+> 因此，我们得到了 hidden → ouput 矩阵 $\textbf{W}^{'}$ 的更新方程
+> $$
+> {w_{ij}^{'}}^{(new)} = {w_{ij}^{'}}^{(old)} - \eta \cdot EI_j \cdot h_i \qquad (33)
+> $$
+> 或者
+> $$
+> {v_{w_j}^{'}}^{(new)} = {v_{w_j}^{'}}^{(old)} -  \eta \cdot EI_j \cdot \textbf{h} \qquad for \ j =1,2, \cdots , V. \qquad(34) 
+> $$
+>
+> 对这个更新方程的直观理解与 (11) 相同，除了预测误差是对输出层中所有上下文单词的总和。注意，我们需要对每个训练实例的 hidden→output 矩阵的每个元素应用这个更新方程。
+>
+> 除了预测误差 $e_j$ 被 $EI_j$ 替换之外，input → hidden 矩阵的更新方程的推导与(12)至(16)相同。我们直接给出更新公式：
+> $$
+> v_{w_I}^{(new)} = v_{w_I}^{(old)} - \eta \cdot EH^T \qquad (35)
+> $$
+> 其中 $EH$ 是 $N$维向量，其每个分量定义为
+> $$
+> EH_i = \sum_{j=1}^{V}EI_j \cdot w_{ij}^{'} \qquad (36)
+> $$
+> (35)的直观理解与(16)相同。
+
+
+
+--------
 
 ## Acknowledgement
 
