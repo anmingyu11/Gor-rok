@@ -223,3 +223,4 @@ Skip-Gram模型和CBOW模型其实是反过来的，在上一篇已经讲过。
 `vocab[word].point[d]`指的是，当前单词word，第d个编码下，前置的结点。
 
 以上就是基于Hierarchical Softmax的word2vec模型，下一篇我们讨论基于Negative Sampling的word2vec模型。 
+
