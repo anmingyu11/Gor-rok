@@ -75,15 +75,15 @@ O = E \times T \times Q \ , \qquad (1)
 $$
 where $E$ is number of the training epochs, $T$ is the number of the words in the training set and $Q$ is defined further for each model architecture. Common choice is $E = 3 − 50$ and $T$ up to one billion. All models are trained using stochastic gradient descent and backpropagation [26].
 
-> 许多不同类型的模型来评估词的连续表示，包括众所周知的 潜在语义分析(LSA)(注：SVD实现) 和 潜在狄利克雷分配(LDA)()。在本文中，我们关注的是通过神经网络学习的词的分布式表示，因为之前的研究表明，在保持单词之间的线性规律方面，神经网络的表现明显优于 LSA [20,31];此外，LDA在大型数据集上的计算成本非常高。
+> 许多不同类型的模型来评估词的连续表示，包括众所周知的 潜在语义分析(LSA) 和潜在 狄利克雷分配(LDA)。在本文中，我们关注的是通过神经网络学习的词的分布式表示，因为之前的研究表明，在保持单词之间的线性规律方面，神经网络的表现明显优于 LSA [20,31]; 此外，LDA 在大型数据集上的计算成本非常高。
 >
 > 与[18]类似，为了比较不同的模型架构，我们首先将模型的计算复杂度定义为完全训练模型需要访问的参数的数量。接下来，我们将尝试使准确性最大化，同时使计算复杂度最小化。
 >
-> 对于以下所有模型，训练复杂度都成正比：
+> 对于以下所有模型，训练复杂度都与下面公式成正比：
 > $$
 > O = E \times T \times Q \ , \qquad (1)
 > $$
-> 其中$E$为训练 epoch 数，$T$为训练集中单词数，$Q$ 为每种模型体系结构的进一步定义(译者注：这应该是每个模型训练一个词需要的参数量？)。一般情况下 $E \in [3,50]$  T 多达十亿 。所有模型都使用 随机梯度下降 和反向传播[26]进行训练。
+> 其中$E$ 为训练 epoch 数，$T$为训练集中总词数(注：非词典长度)，$Q$ 为每种模型体系结构的进一步定义(注：这应该是每个模型训练一个词需要的参数量)。一般情况下 $E = [3,50]$  $T$ 多达十亿 。所有模型都使用 随机梯度下降 和 反向传播[26] 进行训练。
 
 #### 2.1 Feedforward Neural Net Language Model (NNLM)
 
@@ -97,15 +97,17 @@ where the dominating term is $H × V$ . However, several practical solutions wer
 
 In our models, we use hierarchical softmax where the vocabulary is represented as a Huffman binary tree. This follows previous observations that the frequency of words works well for obtaining classes in neural net language models [16]. Huffman trees assign short binary codes to frequent words, and this further reduces the number of output units that need to be evaluated: while balanced binary tree would require $log_2(V)$ outputs to be evaluated, the Huffman tree based hierarchical softmax requires only about $log_2$(Unigram perplexity$(V)$). For example when the vocabulary size is one million words, this results in about two times speedup in evaluation. While this is not crucial speedup for neural network LMs as the computational bottleneck is in the $N×D×H$ term, we will later propose architectures that do not have hidden layers and thus depend heavily on the efficiency of the softmax normalization.
 
-> 在[1]中提出了概率前馈神经网络语言模型。它由输入层、投影层、隐藏层和输出层组成。在输入层，前面的 $N$ 个单词使用1-of-$V$编码(one-hot)，其中 $V$ 是词汇表的大小。然后使用共享的投影矩阵(将词投影成词向量)，将输入层投影到维度为 $N × D$ 的投影层 $P$ 上。由于在任何给定时间内只有 $N$ 个输入是活跃的，所以投影层的合成是一个代价相对少的操作。
+> 在[1]中提出了概率前馈神经网络语言模型。它由输入层、投影层、隐藏层和输出层组成。在输入层，前面的 $N$ 个单词使用1-of-$V$编码(one-hot)，其中 $V$ 是词汇表的大小。然后使用共享的投影矩阵(注：将词投影成词向量)，将输入层投影到维度为 $N × D$ 的投影层 $P$ 上。由于从头到尾只有 $N$ 个输入是被激活，所以投影层的合成是一个代价相对少的操作。
 >
-> NNLM结构在投影层和隐藏层之间的计算变得很复杂，因为投影层中的值很密集。 对于一个常见的 $ N = 10 $ ，投影层的大小（$ P $）可能为 500 到 2000，而隐藏层的大小 $H$ 通常为 500 到 1000 个单位。 隐藏层用来计算词汇表中所有单词的概率分布，得到一个维数为 $V$ 的输出层。因此，每个训练实例的计算复杂度为：
+> NNLM 架构在投影层和隐藏层之间的计算变得很复杂，因为投影层中的值很密集。 对于一个常见的 $ N = 10 $ ，投影层的大小($ P $)可能为 500 到 2000 (注：词向量维度一般为 50 - 200)，而隐藏层的大小 $H$ 通常为 500 到 1000 个单位。 隐藏层用来计算词典中所有单词的概率分布，得到一个维数为 $V$ 的输出层。因此，每次训练的计算复杂度为：
 > $$
 > Q = N × D + N × D × H + H × V, \qquad (2)
 > $$
-> 其中主导项是 $H × V$。 但是，为避免这种情况提出了一些实际的解决方案。 要么使用 hierarchical softmax[25，23，18]，要么使用在训练过程中未 归一化的模型来完全避免归一化模型[4，9]。 用词汇表的二叉树表示，需要评估的输出单位数可以降低到  $log_2(V)$ 左右。 因此，大多数复杂性是由$N×D×H$ 导致的。
+> 其中主导项是 $H × V$。 虽然，为避免这种情况提出了一些可行的解决方案。 要么使用 hierarchical softmax[25，23，18]，或者通过使用在训练时没有归一化的模型 [4,9] 来完全避免归一化模型。 将词典用二叉树表示，需要计算的输出单元数量可以降低到  $log_2(V)$ 左右。 于是，余下部分大多数的复杂性是由 $N×D×H$ 导致的。
 >
-> 在我们的模型中，我们使用 Hierarchical softmax, 其中将词典表示为哈夫曼树。这与之前的观察结果一致，即在神经网络语言模型[16]中，单词的频率对于获取类很有效(？？可能意思是哈夫曼树通过词频来获取词的类)。哈夫曼树将短二进制码分配给频繁的单词，这进一步减少了需要评估的输出单元数量：平衡二叉树需要评估 $log2(V)$ 输出，而基于哈夫曼树的 hierarchical softmax, 只需要 $log_2$(Unigram perplexity($V$))。例如，当词汇量为 100万 个单词时，这会使评估速度加快两倍左右(？？从n缩减到logn只加快了两倍左右？)。虽然这对于神经网络语言模型来说不是关键的加速，因为计算瓶颈在 $N×D×H$ 项中，我们稍后将提出没有隐藏层的架构，因此严重依赖于 softmax 归一化的效率。(？？这里应该是去掉统治项 $H \times V$后计算瓶颈在$N \times D \times H$。)
+> 在我们的模型中，我们使用 Hierarchical softmax, 其中将词典表示为哈夫曼树。这与之前的观察结果一致，即在神经网络语言模型[16]中，词频对于获取类很有效。(注：这里没太理解，可能意思是哈夫曼树是通过词频建立的，所以获取词很有效？)。哈夫曼树将短的二进制码分给频繁词，这进一步减少了需要计算的输出单元数量：平衡二叉树需要计算 $log2(V)$ 个输出单元，而基于哈夫曼树的 hierarchical softmax, 只需要 $log_2(Unigram\_perplexity(V$)) (注：可能指的是unigram模型的的困惑度)。
+>
+> 例如，当词典长度为 100万 时，这会使计算速度加快两倍左右。虽然这对于神经网络语言模型来说不是关键的加速，因为计算瓶颈在 $N×D×H$ 项中，我们稍后将提出没有隐藏层的架构，因此严重依赖于 softmax 归一化的效率。
 
 #### 2.2 Recurrent Neural Net Language Model (RNNLM)
 
@@ -115,21 +117,21 @@ The complexity per training example of the RNN model is
 $$
 Q = H × H + H × V, \qquad (3)
 $$
-where the word representations $D$ have the same dimensionality as the hidden layer $H$. Again, the term $H × V$ can be efficiently reduced to $H × log2(V)$ by using hierarchical softmax. Most of the complexity then comes from $H × H$.
+where the word representations $D$ have the same dimensionality as the hidden layer $H$. Again, the term $H × V$ can be efficiently reduced to $H × log_2(V)$ by using hierarchical softmax. Most of the complexity then comes from $H × H$.
 
-> 基于递归神经网络的语言模型已被提出，以克服前馈 NNLM 的某些局限性，如需要指定上下文长度(模型 N 的 阶数)，以及因为理论上 RNNs 可以比浅神经网络有效地表示更复杂的模式[15,2]。RNN模型没有投影层;只有输入、隐藏和输出层。这类模型的特别之处在于递归矩阵，它使用延时连接将隐藏层与自身连接起来。这使得循环模型可以形成某种短期记忆，因为来自过去的信息可以用隐藏层状态来表示，该隐藏层状态会根据当前输入和前一个时间阶段的隐藏层状态进行更新。
+> RNN-based 的语言模型已被提出，以克服前馈 NNLM 的某些局限性，如需要指定上下文长度(模型的阶数 $N$ )，以及因为理论上 RNNs 可以比浅神经网络有效地表示更复杂的模式[15,2]。RNN模型没有投影层;只有输入、隐藏和输出层。这类模型的特别之处在于递归矩阵，它使用延时连接将隐藏层与自身连接起来。这使得循环模型可以形成某种短期记忆，因为来自过去的信息可以用隐藏层状态来表示，该隐藏层状态会根据当前输入和前一个时间阶段的隐藏层状态进行更新。
 >
-> RNN模型每个训练实例的复杂度为
+> RNN模型每次训练的复杂度为
 > $$
 > Q = H × H + H × V, \qquad (3)
 > $$
-> 其中词的表示 $D$ 与隐藏层 $H$ 的维数相同。再一次的，$H × V$ 项通过使用 hierarchical softmax 可以有效地减少到 $H × log2(V)$ 。大多数复杂性来自于$H × H$。
+> 其中词向量的维度 $D$ 与隐藏层 $H$ 的维数相同。再一次的，$H × V$ 项通过使用 hierarchical softmax 可以有效地减少到 $H × log_2(V)$ 。大多数复杂性来自于$H × H$
 
 #### 2.3 Parallel Training of Neural Networks
 
-To train models on huge data sets, we have implemented several models on top of a large-scale distributed framework called DistBelief [6], including the feedforward NNLM and the new models proposed in this paper. The framework allows us to run multiple replicas of the same model in parallel, and each replica synchronizes its gradient updates through a centralized server that keeps all the parameters. For this parallel training, we use mini-batch asynchronous gradient descent with an adaptive learning rate procedure called Adagrad [7]. Under this framework, it is common to use one hundred or more model replicas, each using many CPU cores at different machines in a data center
+To train models on huge data sets, we have implemented several models on top of a large-scale distributed framework called DistBelief [6], including the feedforward NNLM and the new models proposed in this paper. The framework allows us to run multiple replicas of the same model in parallel, and each replica synchronizes its gradient updates through a centralized server that keeps all the parameters. For this parallel training, we use mini-batch asynchronous gradient descent with an adaptive learning rate procedure called Adagrad [7]. Under this framework, it is common to use one hundred or more model replicas, each using many CPU cores at different machines in a data center.
 
-> 为了在大数据集上训练模型，我们在一个名为 DistBelief[6]的大规模分布式框架上实现了几个模型，包括 前馈NNLM和本文提出的新模型。该框架允许我们并行运行同一模型的多个副本，并且每个副本都通过保留所有参数的集中式服务器同步其梯度更新。在这个并行训练中，我们使用了小批量异步梯度下降和一个称为Adagrad[7]的自适应学习率程序。在这个框架下，通常使用100个或更多的模型副本，每个副本在一个数据中心的不同机器上使用多个CPU核。
+> 为了在大数据集上训练模型，我们在一个名为 DistBelief[6]的大规模分布式框架上实现了几个模型，包括前馈 NNLM 和本文提出的新模型。该框架允许我们并行运行同一模型的多个副本，并且每个副本都通过保留所有参数的集中式服务器同步其梯度更新。在这个并行训练中，我们使用了小批量异步梯度下降和一个称为Adagrad[7]的自适应学习率程序。在这个框架下，通常使用100个或更多的模型副本，每个副本在一个数据中心的不同机器上使用多个CPU核。
 
 ## 3 New Log-linear Models
 
@@ -139,9 +141,12 @@ The new architectures directly follow those proposed in our earlier work [13, 14
 
 > 在本节中，我们提出了两种新的模型结构来学习词的分布式表示，以尽量减少计算复杂度。上一节的主要观察结果是，大部分的复杂度是由模型中的非线性隐藏层造成的。虽然这正是神经网络如此吸引人的原因，但我们决定探索更简单的模型，这些模型可能不能像神经网络那样精确地表示数据，但可能可以更有效地对数据进行训练。
 >
-> 新的结构直接遵循我们之前提出的结构(13、14)，发现NNLM模型可以通过两个步骤成功地进行训练:
+> 新的结构直接遵循我们之前提出的结构(13、14)，发现 NNLM 模型可以通过两个步骤成功地进行训练:
 >
-> - 首先, 使用简单模型学习连续的词向量 ,然后使用N- gram NNLM在这些单词的分布式表示之上训练。虽然后来有大量的工作集中在学习词向量上，但我们认为在[13]中提出的方法是最简单的。请注意，相关模型也已经提早提出[26，8]。
+> - 使用简单模型学习连续的词向量 ,
+> - 使用N-gram NNLM 在这些词向量之上训练。
+>
+> 虽然后来有大量的工作集中在学习词向量上，但我们认为在[13]中提出的方法是最简单的。请注意，相关模型也已经在很早提出[26，8]。
 
 #### 3.1 Continuous Bag-of-Words Model
 
@@ -151,11 +156,11 @@ Q = N \times D + D \times log_2(V) \qquad (4)
 $$
 We denote this model further as CBOW, as unlike standard bag-of-words model, it uses continuous distributed representation of the context. The model architecture is shown at Figure 1. Note that the weight matrix between the input and the projection layer is shared for all word positions in the same way as in the NNLM.
 
-> 第一个提出的架构类似于前馈的NNLM，其中去掉了非线性隐含层，投影层为所有单词共享(不仅仅是投影矩阵); 因此，所有词都被映射到到相同的位置(它们的向量被平均)。我们称这种结构为“词袋模型”，因为历史上的单词顺序并不影响映射。此外，我们也会使用未来的词 ; 通过构建一个对数线性分类器，输入中包含四个未来和四个历史词（可理解为$context(w) \ /\ w$），我们的训练准则是正确分类当前（中间）单词，从而在下一节介绍的任务上获得了最佳表现。那么训练的复杂度是
+> 第一个提出的架构类似于 前馈 NNLM，去掉了非线性隐含层，投影层为所有单词共享(不仅仅是投影矩阵); 因此，所有词都被映射到到相同的位置(它们的向量被平均)。我们称这种架构为“词袋模型”，因为输入词的顺序(注：context words)不影响映射层结果。 通过构建一个 log-linear 分类器，输入中包含四个未来和四个历史词（可理解为$context(w) \ /\ w$），我们的训练准则是正确分类当前（中间）单词，从而在下一节介绍的任务上获得了最佳表现。训练的复杂度是：
 > $$
 > Q = N \times D + D \times log_2(V) \qquad (4)
 > $$
-> 我们进一步表示这个模型为 CBOW，与标准的词袋模型不同，它使用了上下文的连续分布式表示(意思应该是使用了一个词的上下文的词向量？)。模型结构如图1所示。请注意，输入层和投影层之间的权值矩阵与 NNLM 中相同，对于所有词位置都是共享的。
+> 我们进一步表示这个模型为 CBOW，与标准的词袋模型不同，它使用了上下文的所有词的词向量。模型结构如图1所示。请注意，输入层和投影层之间的权值矩阵与 NNLM 中相同，对于所有词位置都是共享的。
 
 #### 3.2 Continuous Skip-gram Model
 
@@ -163,25 +168,25 @@ The second architecture is similar to CBOW, but instead of predicting the curren
 
 The training complexity of this architecture is proportional to
 $$
-Q = C × (D + D × log2(V )) \qquad (5)
+Q = C × (D + D × log_2(V )) \qquad (5)
 $$
 where $C$ is the maximum distance of the words. Thus, if we choose $C = 5$, for each training word we will select randomly a number $R$ in range $< 1 ; C >$, and then use $R$ words from history and $R$ words from the future of the current word as correct labels. This will require us to do $R × 2$ word classifications, with the current word as input, and each of the $R + R$ words as output. In the following experiments, we use $C = 10$.
 
-![](/Users/helloword/Anmingyu/Gor-rok/Papers/Word2vec/EfficientEstimationofWordRepresentationsinVectorSpace/Fig1.png)
+![Figure1](https://raw.githubusercontent.com/anmingyu11/Gor-rok/master/Papers/Embedding/EfficientEstimationofWordRepresentationsinVectorSpace/Fig1.png)
 
 **Figure 1: New model architectures. The CBOW architecture predicts the current word based on the context, and the Skip-gram predicts surrounding words given the current word.**
 
-> 第二种体系结构与CBOW类似，但它不是根据上下文预测当前单词，而是根据同一句子中的另一个单词最大限度地分类一个单词。
+> 第二种架构与 CBOW 类似，但它不是根据上下文预测当前单词，而是根据同一句子中的另一个单词最大限度地分类一个单词。
 >
-> 我们将每个当前词映射为连续投影层用作对数线性分类器的输入，并预测当前词前后的特定范围内的词。
+> 我们将每个当前词经过投影层映射作为 log-linear 分类器的输入，并预测当前词前后的特定范围内的词。(注：context window)
 >
-> 我们发现，增加范围可以提高所得词向量的质量，但同时也会增加计算复杂度。 由于距离较远的词通常与当前词的相关性比与距离最近的词的关联性小，因此我们在训练示例中通过从这些词中进行降采样来给予距离较远的单词较少的权重。
+> 我们发现，增加范围可以提高所得词向量的质量，但同时也会增加计算复杂度。 由于距离较远的词通常与当前词的相关性比与距离最近的词的关联性小，因此我们在训练中通过从这些词中进行降采样(注：下文里有解释)来给予距离较远的单词较少的权重。
 >
-> 这种结构的训练复杂度是：
+> 这种架构的训练复杂度是：
 > $$
-> Q = C × (D + D × log2(V )) \qquad (5)
+> Q = C × (D + D × log_2(V )) \qquad (5)
 > $$
-> 其中$ C $是单词的最大距离。 因此，如果我们选择$ C = 5 $，则对于每个训练词，我们将随机选择在 $< 1 ; C >$ 范围里的数字 $R$ , 然后使用当前词历史的 $ R $ 个单词和未来的 $ R $ 个单词作为正样本（$context(w) \ /\ w$）。 这将需要我们对 $ R×2 $ 词进行分类，将当前词作为输入，并将每个 $ R + R $ 单词作为输出。 在以下实验中，我们使用 $ C = 10 $。
+> 其中 $ C $ 是单词的最大距离。 因此，如果我们选择 $ C = 5 $，则对于每个训练词，我们将随机选择在 $< 1 ; C >$ 范围里的数字 $R$ , 然后使用当前词历史的 $ R $ 个单词和未来的 $ R $ 个单词作为正样本。 这将需要我们对 $ R×2 $ 词进行分类，将当前词作为输入，并将每个 $ R + R $ 单词作为输出。 在以下实验中，我们使用 $ C = 10 $。
 
 ## 4 Results
 
@@ -191,7 +196,7 @@ Somewhat surprisingly, these questions can be answered by performing simple alge
 
 Finally, we found that when we train high dimensional word vectors on a large amount of data, the resulting vectors can be used to answer very subtle semantic relationships between words, such as a city and the country it belongs to, e.g. France is to Paris as Germany is to Berlin. Word vectors with such semantic relationships could be used to improve many existing NLP applications, such as machine translation, information retrieval and question answering systems, and may enable other future applications yet to be invented.
 
-![](/Users/helloword/Anmingyu/Gor-rok/Papers/Word2vec/EfficientEstimationofWordRepresentationsinVectorSpace/Table1.png)
+![Table1](https://raw.githubusercontent.com/anmingyu11/Gor-rok/master/Papers/Embedding/EfficientEstimationofWordRepresentationsinVectorSpace/Table1.png)
 
 **Table 1: Examples of five types of semantic and nine types of syntactic questions in the SemanticSyntactic Word Relationship test set**
 
@@ -210,9 +215,10 @@ To measure quality of the word vectors, we define a comprehensive test set that 
 We evaluate the overall accuracy for all question types, and for each question type separately (semantic, syntactic). Question is assumed to be correctly answered only if the closest word to the vector computed using the above method is exactly the same as the correct word in the question; synonyms are thus counted as mistakes. This also means that reaching 100% accuracy is likely to be impossible, as the current models do not have any input information about word morphology. However, we believe that usefulness of the word vectors for certain applications should be positively correlated with this accuracy metric. Further progress can be achieved by incorporating information about structure of words, especially for the syntactic questions.
 
 > 为了衡量词向量的质量，我们定义了一个包含 5 类语义题和 9 类语法题的综合测试集。表1显示了每个类别中的两个示例。
-> 总共有 8869 个语义问题和 10675 个语法问题。每个类别的问题是通过两个步骤创建的:首先，手动创建一个相似的词对列表。然后，将两个词对连接起来，形成一个大的问题列表。例如，我们做了一个包含 68 个美国大城市及其所属州的列表，并通过随机选择两个词对形成了大约 2500 个问题。我们在测试集中只包含单个标记词，因此不存在多词实体(如New York)。
 >
-> 我们评估所有问题类型以及每种问题类型（语义，句法）的总体准确性。 仅当与使用上述方法计算出的向量最接近的词与问题中的正确词完全相同时，才认为问题得到了正确答案。 因此，同义词被视为错误。 这也意味着达到100％的准确性很可能是不可能的，因为当前模型没有任何有关词法的输入信息。 但是，我们认为，单词向量在某些应用中的有用性应与此精度指标正相关。 通过合并有关单词结构的信息，尤其是针对句法问题的信息，可以取得进一步的进步。
+> 总共有 8869 个语义问题和 10675 个语法问题。每个类别的问题是通过两个步骤创建的：首先，手动创建一个相似的词对列表。然后，将两个词对连接起来，形成一个大的问题列表。例如，我们做了一个包含 68 个美国大城市及其所属州的列表，并通过随机选择两个词对形成了大约 2500 个问题。我们在测试集中只包含单个标记词，因此不存在多词实体 (如New York)。
+>
+> 我们评估所有问题类型以及每种问题类型（语义，句法）的总体准确性。 仅当与使用上述方法计算出的向量最接近的词与问题中的正确词完全相同时，才认为问题得到了正确答案。因此，同义词被视为错误。这也意味着达到 100％ 的准确性很可能是不可能的，因为当前模型没有任何有关语法的输入信息。但是，我们认为，词向量在某些应用中的性能与此精度正相关。通过合并有关单词结构的信息，尤其是针对语法问题的信息，可以取得进一步的进步。
 
 #### 4.2 Maximization of Accuracy
 
@@ -220,25 +226,25 @@ We have used a Google News corpus for training the word vectors. This corpus con
 
 It can be seen that after some point, adding more dimensions or adding more training data provides diminishing improvements. So, we have to increase both vector dimensionality and the amount of the training data together. While this observation might seem trivial, it must be noted that it is currently popular to train word vectors on relatively large amounts of data, but with insufficient size (such as 50 - 100). Given Equation 4, increasing amount of training data twice results in about the same increase of computational complexity as increasing vector size twice. For the experiments reported in Tables 2 and 4, we used three training epochs with stochastic gradient descent and backpropagation. We chose starting learning rate 0.025 and decreased it linearly, so that it approaches zero at the end of the last training epoch.
 
-![Table2](/Users/helloword/Anmingyu/Gor-rok/Papers/Word2vec/EfficientEstimationofWordRepresentationsinVectorSpace/Table2.png)
+![Table2](https://raw.githubusercontent.com/anmingyu11/Gor-rok/master/Papers/Embedding/EfficientEstimationofWordRepresentationsinVectorSpace/Table2.png)
 
 **Table 2: Accuracy on subset of the Semantic-Syntactic Word Relationship test set, using word vectors from the CBOW architecture with limited vocabulary. Only questions containing words from the most frequent 30k words are used.**
 
-![Table3](/Users/helloword/Anmingyu/Gor-rok/Papers/Word2vec/EfficientEstimationofWordRepresentationsinVectorSpace/Table3.png)
+![Table3](https://raw.githubusercontent.com/anmingyu11/Gor-rok/master/Papers/Embedding/EfficientEstimationofWordRepresentationsinVectorSpace/Table3.png)
 
 **Table 3: Comparison of architectures using models trained on the same data, with 640-dimensional word vectors. The accuracies are reported on our Semantic-Syntactic Word Relationship test set, and on the syntactic relationship test set of [20]**
 
-![Table4](/Users/helloword/Anmingyu/Gor-rok/Papers/Word2vec/EfficientEstimationofWordRepresentationsinVectorSpace/Table4.png)
+![Table4](https://raw.githubusercontent.com/anmingyu11/Gor-rok/master/Papers/Embedding/EfficientEstimationofWordRepresentationsinVectorSpace/Table4.png)
 
 **Table 4: Comparison of publicly available word vectors on the Semantic-Syntactic Word Relationship test set, and word vectors from our models. Full vocabularies are used.**
 
-> 我们已经使用Google新闻语料库来训练单词向量。 该语料库包含约 6B tokens。 我们已将词汇量限制为一百万个最常用词。 显然，我们面临时间受限的优化问题，可预见到的，**使用更多的数据和更高维的词向量都将提高准确性。** 为了估算模型架构的最佳选择，以便快速获得尽可能好的结果，我们首先评估了在训练数据子集上训练的模型，并将词汇限制为词频最高的30k单词。 表2 显示了使用 CBOW 架构并选择不同的单词向量维数和增加训练数据量的结果。
+> 我们已经使用 Google 新闻语料库来训练词向量。该语料库包含约 6B tokens。 我们已将词汇量限制为一百万个频繁词(注：词频取 top 100万)。 显然，我们面临时间受限的优化问题，可预见到的，**使用更多的数据和更高维的词向量都将提高准确性。** 为了估算模型架构的最佳选择，以便快速获得尽可能好的结果，我们首先评估在训练数据子集上训练的模型，并将词典限制为词频最高的 30k 单词。 表2 显示了使用 CBOW 架构并选择不同的单词向量维数和增加训练数据量的结果。
 >
-> 可以看出，经过一段时间之后，添加更多的维度或添加更多的训练数据将减少改进。 因此，我们必须同时增加向量维数和训练数据量。 尽管这种观察看似微不足道，但必须指出的是，目前流行的是在相对大量的数据上训练单词向量，但其大小不足（例如50-100）。 给定公式4，**训练数据量增加两倍会导致计算复杂度的增加与向量尺寸增加两次所导致的增加大致相同。** 对于 表2 和 表4 中报道的实验，我们用 SGD 和 BP 训练了 3 个 epoch。 我们选择开始学习率 0.025 并线性降低它，以使其在最后一个训练 epoch 结束时接近零。
+> 可以看出，在一定程度后，单独添加更多的维度或添加更多的训练数据的效果会减弱。 因此，我们必须同时增加向量维数和训练数据量。 尽管这种观察看似微不足道，但必须指出的是，目前流行的是在相对大量的数据上训练词向量，但其大小不足（例如 50 - 100）。 给定公式4，**训练数据量增加两倍与向量维度增加两倍所导致的计算复杂度的增加大致相同。** 对于 表2 和 表4 中报道的实验，我们用 SGD 和 BP 训练了 3 个 epoch。 我们选择开始学习率 0.025 并线性降低它，以使其在最后一个训练 epoch 结束时接近零。
 
 #### 4.3 Comparison of Model Architectures
 
-First we compare different model architectures for deriving the word vectors using the same training data and using the same dimensionality of 640 of the word vectors. In the further experiments, we use full set of questions in the new Semantic-Syntactic Word Relationship test set, i.e. unrestricted to the 30k vocabulary. We also include results on a test set introduced in [20] that focuses on syntactic similarity between words3 .
+First we compare different model architectures for deriving the word vectors using the same training data and using the same dimensionality of 640 of the word vectors. In the further experiments, we use full set of questions in the new Semantic-Syntactic Word Relationship test set, i.e. unrestricted to the 30k vocabulary. We also include results on a test set introduced in [20] that focuses on syntactic similarity between words3.
 
 The training data consists of several LDC corpora and is described in detail in [18] (320M words, 82K vocabulary). We used these data to provide a comparison to a previously trained recurrent neural network language model that took about 8 weeks to train on a single CPU. We trained a feedforward NNLM with the same number of 640 hidden units using the DistBelief parallel training [6], using a history of 8 previous words (thus, the NNLM has more parameters than the RNNLM, as the projection layer has size 640 × 8).
 
@@ -248,29 +254,31 @@ Next, we evaluated our models trained using one CPU only and compared the result
 
 For experiments reported further, we used just one training epoch (again, we decrease the learning rate linearly so that it approaches zero at the end of training). Training a model on twice as much data using one epoch gives comparable or better results than iterating over the same data for three epochs, as is shown in Table 5, and provides additional small speedup.
 
-![Table5](/Users/helloword/Anmingyu/Gor-rok/Papers/Word2vec/EfficientEstimationofWordRepresentationsinVectorSpace/Table5.png)
+![Table5](https://raw.githubusercontent.com/anmingyu11/Gor-rok/master/Papers/Embedding/EfficientEstimationofWordRepresentationsinVectorSpace/Table5.png)
 
 **Table 5: Comparison of models trained for three epochs on the same data and models trained for one epoch. Accuracy is reported on the full Semantic-Syntactic data set.**
 
-> 首先，我们比较了不同模型结构在使用相同训练数据和相同维度(640)的词向量导出词向量的。在进一步的实验中，我们在新的语义-句法词汇关系测试集中使用全组问题，即不受30k词汇的限制。我们还包括[20]中引入的测试集的结果，该测试集关注单词3之间的语法相似性。
+> 首先，我们比较了不同模型架构在使用相同训练数据和相同维度(640)输出的词向量。在进一步的实验中，我们在新的 语义 - 语法 词汇关系测试集中使用全量问题，即不受 30k 大小的词典的限制。我们还包括[20]中引入的测试集的结果，该测试集关注单词3之间的语法相似性。
 >
-> 训练数据由几个LDC语料库组成，在[18] (3.2亿单词，82K单词) 中进行了详细描述。我们使用这些数据来与之前在单个CPU上训练约 8周的 RNNLM 模型进行比较。我们使用 DistBelief 并行训练 [6]，使用 $8$ 个先前单词的历史训练了 前向 NNLM，其隐藏单元数为 $640$个（因此，NNLM比RNNLM具有更多的参数，因为投影层的大小为 $640 × 8$ ）。
+> 训练数据由几个 LDC 语料库组成，在[18] (3.2亿单词，82K单词) 中进行了详细描述。我们使用这些数据来与之前在单个 CPU 上训练约 8 周的 RNNLM 模型进行比较。我们使用 DistBelief 并行训练 [6]，使用 $8$ 个 history 词训练了 feedforward NNLM，其隐藏单元数为 $640$个（因此，NNLM 比 RNNLM 具有更多的参数，因为投影层的大小为 $640 × 8$ ）。
 >
-> 在 表3 中，可以看到 RNN 中的词向量(如[20]中所使用的)主要在语法问题上表现良好。 NNLM 向量的性能明显优于 RNN ——这并不奇怪，因为 NNLM 中的词向量直接与非线性隐含层相连。在语法任务上， CBOW 结构比 NNLM 工作得更好，在语义任务上也差不多。最后， Skip-gram 结构在语法任务上比 CBOW 模型稍差一些(但仍然比 NNLM 好)，在测试的语义部分也比所有其他模型好得多。
+> 在 表3 中，可以看到 RNN 中的词向量(如[20]中所使用的)主要在语法问题上表现良好。 NNLM 向量的性能明显优于 RNN ——这并不奇怪，因为 NNLM 中的词向量直接与非线性隐藏层链接。在语法任务上， CBOW 结构比 NNLM 工作得更好，在语义任务上也差不多。最后， Skip-gram 架构在语法任务上比 CBOW 模型稍差一些(但仍然比 NNLM 好)，在测试的语义部分也比所有其他模型好得多。
 >
-> 接下来，我们评估了仅使用一个 CPU 训练的模型，并将结果与可公开获得的词向量进行了比较。 表4中给出了比较。 CBOW 模型在大约一天的时间里对 Google 新闻数据的子集进行了训练，而 Skip-gram 模型的训练时间大约为三天。
+> 接下来，我们评估了仅使用一个 CPU 训练的模型，并将结果与可公开获得的词向量进行了比较。 表4 中给出了比较。 CBOW 模型在大约一天的时间里对 Google 新闻数据的子集进行了训练，而 Skip-gram 模型的训练时间大约为三天。
 >
-> 对于进一步的实验报告，我们只使用了一个训练 epoch (再次，我们线性降低学习率，使它在训练结束时接近零)。**使用一个 epoch 在两倍数量的数据上训练模型，得到的结果与在三个 epoch 中迭代相同数据相比是相当的或更好的，如表5所示，并提供额外的小加速。**
+> 对于进一步的实验报告，我们只使用了一个训练 epoch (再次，我们线性地降低学习率，使它在训练结束时接近零)。**如 表5 所示，使用一个 epoch 在两倍的数据上训练模型可以获得与在三个 epoch 的相同量级数据上迭代相媲美或更好的结果，并提供额外的小加速比。**
+>
+> 
 
 #### 4.4 Large Scale Parallel Training of Models
 
 As mentioned earlier, we have implemented various models in a distributed framework called DistBelief. Below we report the results of several models trained on the Google News 6B data set, with mini-batch asynchronous gradient descent and the adaptive learning rate procedure called Adagrad [7]. We used 50 to 100 model replicas during the training. The number of CPU cores is an estimate since the data center machines are shared with other production tasks, and the usage can fluctuate quite a bit. Note that due to the overhead of the distributed framework, the CPU usage of the CBOW model and the Skip-gram model are much closer to each other than their single-machine implementations. The result are reported in Table 6.
 
-![Table6](/Users/helloword/Anmingyu/Gor-rok/Papers/Word2vec/EfficientEstimationofWordRepresentationsinVectorSpace/Table6.png)
+![Table6](https://raw.githubusercontent.com/anmingyu11/Gor-rok/master/Papers/Embedding/EfficientEstimationofWordRepresentationsinVectorSpace/Table6.png)
 
 **Table 6: Comparison of models trained using the DistBelief distributed framework. Note that training of NNLM with 1000-dimensional vectors would take too long to complete.**
 
-![Table7](/Users/helloword/Anmingyu/Gor-rok/Papers/Word2vec/EfficientEstimationofWordRepresentationsinVectorSpace/Table7.png)
+![Table7](https://raw.githubusercontent.com/anmingyu11/Gor-rok/master/Papers/Embedding/EfficientEstimationofWordRepresentationsinVectorSpace/Table7.png)
 
 **Table 7: Comparison and combination of models on the Microsoft Sentence Completion Challenge.**
 
@@ -288,25 +296,33 @@ A short summary of some previous results together with the new results is presen
 >
 >我们已经探索了此任务上 skip-gram 结构的性能。 首先，我们在[32]中提供的 5,000万 个单词上训练 640维 模型。 然后，我们通过使用输入处的未知词来计算测试集中每个句子的分数，并预测句子中所有周围的词。 那么最终的句子分数就是这些单个预测的总和。 使用句子分数，我们选择最可能的句子。（这里指的是通过skip-gram做完形填空的过程）
 >
->表7 给出了一些 先前结果 以及 新结果 的简短摘要。尽管 Skip-gram 模型本身在执行此任务方面的表现并不比LSA相似性好，但是该模型的得分与RNNLM获得的得分是互补的，并且 加权组合可带来一个state of art的结果 58.9％ 的准确度 (59.2% on the development part of the set and 58.7% on the test part of the set)。
+>表7 给出了一些 先前结果 以及 新结果 的简短摘要。尽管 Skip-gram 模型本身在执行此任务方面的表现并不比LSA相似性好，但是该模型的得分与RNNLM获得的得分是互补的，并且 加权组合可带来一个state of art的结果 58.9％ 的准确度 (开发集 59.2% ，测试集 58.7%)。
 
 ## 5 Examples of the Learned Relationships
 
-Table 8 shows words that follow various relationships. We follow the approach described above: the relationship is defined by subtracting two word vectors, and the result is added to another word. Thus for example, Paris - France + Italy = Rome. As it can be seen, accuracy is quite good, although there is clearly a lot of room for further improvements (note that using our accuracy metric that assumes exact match, the results in Table 8 would score only about 60%). 
+Table 8 shows words that follow various relationships. We follow the approach described above: the relationship is defined by subtracting two word vectors, and the result is added to another word. Thus for example, 
+$$
+Paris - France + Italy = Rome
+$$
+As it can be seen, accuracy is quite good, although there is clearly a lot of room for further improvements(note that using our accuracy metric that assumes exact match, the results in Table 8 would score only about 60%). 
 
 We believe that word vectors trained on even larger data sets with larger dimensionality will perform significantly better, and will enable the development of new innovative applications. Another way to improve accuracy is to provide more than one example of the relationship. By using ten examples instead of one to form the relationship vector (we average the individual vectors together), we have observed improvement of accuracy of our best models by about 10% absolutely on the semantic-syntactic test.
 
 It is also possible to apply the vector operations to solve different tasks. For example, we have observed good accuracy for selecting out-of-the-list words, by computing average vector for a list of words, and finding the most distant word vector. This is a popular type of problems in certain human intelligence tests. Clearly, there is still a lot of discoveries to be made using these techniques.
 
-![Table8](/Users/helloword/Anmingyu/Gor-rok/Papers/Word2vec/EfficientEstimationofWordRepresentationsinVectorSpace/Table8.png)
+![Table8](https://raw.githubusercontent.com/anmingyu11/Gor-rok/master/Papers/Embedding/EfficientEstimationofWordRepresentationsinVectorSpace/Table8.png)
 
 **Table 8: Examples of the word pair relationships, using the best word vectors from Table 4 (Skipgram model trained on 783M words with 300 dimensionality).**
 
-> 表8显示了遵循各种关系的单词。我们采用上面描述的方法:通过减去两个词向量来定义关系，然后将结果添加到另一个词上。例如，$巴黎 - 法国 + 意大利 = 罗马$。可以看出，精确度相当好，尽管还有很多进一步改进的空间 (请注意，使用假设精确匹配的准确性指标，表8中的结果仅得分约60%)。
+> 表8 显示了遵循各种关系的单词。我们采用上面描述的方法:通过减去两个词向量来定义关系，然后将结果添加到另一个词上。例如，
+> $$
+> 巴黎 - 法国 + 意大利 = 罗马
+> $$
+> 可以看出，精确度相当好，尽管还有很多进一步改进的空间 (请注意，使用假设精确匹配的准确性指标，表 8 中的结果仅得分约 60%)。
 >
-> 我们相信，在更大的数据集上训练维度更高的词向量将表现得更好，并使开发新的创新应用程序成为可能。另一种提高准确性的方法是提供多个关系示例。通过使用10个例子而不是一个例子来形成关系向量(我们将单个向量平均在一起)，我们观察到我们的最佳模型在语义-句法测试上的准确性提高了大约10%。
+> 我们相信，在更大的数据集上训练维度更高的词向量将表现得更好，并使开发新的创新应用程序成为可能。另一种提高准确性的方法是提供多个关系示例。通过使用10个例子而不是一个例子来形成关系向量(我们将单个向量平均在一起)，我们观察到我们的最佳模型在语义-语法测试上的准确性提高了大约10%。
 >
-> 也可以应用向量运算来解决不同的任务。例如，我们已经观察到，通过计算一系列词的平均向量和找到距离最远的词向量，可以很好地选择 out-of-the-list 的词。在某些人类智力测试中，这是一种常见的问题。显然，使用这些技术仍有许多发现有待发现。
+> 也可以应用向量运算来解决不同的任务。例如，我们已经观察到，通过计算一系列词的平均向量和找到距离最远的词向量，可以很好地选择 out-of-the-list 的词。在某些人类智力测试中，这是一种常见的问题。显然，使用这些技术有很大的开发空间。
 
 ## 6 Conclusion
 
