@@ -285,6 +285,10 @@ The model parameter set is $\theta = \{\Phi, \Psi\}$ where the size of each is $
 
 As shown in Figure 2 the frequency distribution of vertices in random walks of social network and words in a language both follow a power law. This results in a long tail of infrequent vertices, therefore, the updates that affect $\Phi$ will be sparse in nature. This allows us to use asynchronous version of stochastic gradient descent (ASGD), in the multi-worker case. Given that our updates are sparse and we do not acquire a lock to access the model shared parameters, ASGD will achieve an optimal rate of convergence [36]. While we run experiments on one machine using multiple threads, it has been demonstrated that this technique is highly scalable, and can be used in very large scale machine learning [9]. Figure 4 presents the effects of parallelizing DeepWalk. It shows the speed up in processing BlogCatalog and Flickr networks is consistent as we increase the number of workers to 8 (Figure 4a). It also shows that there is no loss of predictive performance relative to the running DeepWalk serially (Figure 4b).
 
+![Figure4](/Users/helloword/Anmingyu/Gor-rok/Papers/Embedding/DeepWalkOnlineLearningofSocialRepresentations/Fig4.png)
+
+**Figure 4: Effects of parallelizing DeepWalk**
+
 > 如 图2 所示，社交网络随机游走中顶点的频率分布和语言中的单词都遵循幂律。这导致不频繁顶点的长尾，因此，影响 $\Phi$ 的更新本质上是稀疏的。这允许我们在多 worker 的情况下使用异步版本的随机梯度下降（ASGD）。鉴于我们的更新是稀疏的，并且我们没有获得访问模型共享参数的锁，ASGD将实现最佳收敛速度[36]。当我们在一台机器上使用多个线程运行实验时，已经证明这种技术具有高度的可扩展性，可以用于非常大规模的机器学习[9]。图4展示了并行化 DeepWalk 的效果。它显示了当我们将 worker 数量增加到 8 个时，处理 BlogCatalog 和 Flickr 网络的速度是一致的（图4 a）。它还表明，相对于连续运行的 DeepWalk ，预测性能没有损失（图4b）。
 
 ## 4.4 Algorithm Variants
