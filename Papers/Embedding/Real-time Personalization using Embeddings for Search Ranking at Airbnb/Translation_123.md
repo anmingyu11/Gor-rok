@@ -145,8 +145,6 @@ log{\frac{1}{1+e^{\textbf{v}_c{'}\textbf{v}_l}}}
 $$
 where parameters $θ$ to be learned are $v_l$ and $v_c$ , $l,c \in V$. The optimization is done via stochastic gradient ascent.
 
-
-
 > 假设我们有一个 $\mathcal{S}$ 集合，其中 $S$个 单击 session 是从 $N$个 用户中获得的，其中 $\mathcal{S}$ 中的每个 session $s=(l_1，\cdots，l_M) \in \mathcal{S}$ 被定义为用户单击的 $M$ 个 listing ID 的 uninterrupted 的连续序列。当用户连续两次点击之间的时间间隔超过 $30$ minutes时，就会启动一个新的 session 。给定该数据集，目标是学习每个唯一 listing $ l_i $ 的 $d$ 维实值表示 $ v_{l_i} \in \mathbb{R} ^ d $，以便类似 listing 位于 embbeding 空间附近 。
 >
 > 形式化来讲，该模型的目标是通过在搜索 session集合 $\mathcal{S}$ 上最大化目标函数 $\mathcal{L}$ 来学习使用 skip-gram 模型[17]的 listing 表示，定义如下(原论文的这个公式似乎有处 typo? 这里放上原公式，实际上j就是表达在context window 内除 i 以外的 listing)
@@ -253,7 +251,7 @@ where parameters $θ$ to be learned are $\textbf{v}_l$ and $\textbf{v}_c$ , $l,c
 > 
 > \qquad (5)
 > $$
-> 学习的参数是 $\textbf{v}_l$ 和 $\textbf{v}_c$ , 其中 $l,c \in \mathcal{V}$.
+> 学习的参数是 $\textbf{v}_l$ 和 $\textbf{v}_c$ , 其中 $l,c \in \mathcal{V}$。
 
 #### Cold start listing embeddings.
 

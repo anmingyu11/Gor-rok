@@ -196,6 +196,7 @@ $$
 > EmbLastLongClickSim(l_i,H_{l_c})=cos(\textbf{v}_{l_i},\textbf{v}_{l_{last}})
 > \qquad (11)
 > $$
+> 
 
 ![Table6](/Users/helloword/Anmingyu/Gor-rok/Papers/Embedding/Real-time Personalization using Embeddings for Search Ranking at Airbnb/Table6.png)
 
