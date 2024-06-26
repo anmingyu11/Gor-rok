@@ -1,5 +1,0 @@
-# metapath2vec: Scalable Representation Learning for Heterogeneous Networks
-
-## ABSTRACT
-
-We study the problem of representation learning in heterogeneous networks. Its unique challenges come from the existence of multiple types of nodes and links, which limit the feasibility of the conventional network embedding techniques. We develop two scalable representation learning models, namely metapath2vec and metapath2vec++. e metapath2vec model formalizes meta-pathbased random walks to construct the heterogeneous neighborhood of a node and then leverages a heterogeneous skip-gram model to perform node embeddings. e metapath2vec++ model further enables the simultaneous modeling of structural and semantic correlations in heterogeneous networks. Extensive experiments show that metapath2vec and metapath2vec++ are able to not only outperform state-of-the-art embedding models in various heterogeneous network mining tasks, such as node classication, clustering, and similarity search, but also discern the structural and semantic correlations between diverse network objects.
